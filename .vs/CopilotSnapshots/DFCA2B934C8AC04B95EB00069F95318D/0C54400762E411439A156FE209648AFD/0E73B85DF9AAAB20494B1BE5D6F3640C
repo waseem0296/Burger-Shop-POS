@@ -1,0 +1,189 @@
+﻿// ============================================================
+// FILE: Services/InvoiceService.cs
+// Generates PDF invoices for completed orders.
+// Uses iTextSharp (itext7) for PDF creation.
+// ============================================================
+
+using BurgerShopPOS.ViewModels;
+using iText.Kernel.Pdf;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using System;
+using System.IO;
+
+namespace BurgerShopPOS.Services
+{
+    public class InvoiceService
+    {
+        private readonly IWebHostEnvironment _env;
+
+        public InvoiceService(IWebHostEnvironment env)
+        {
+            _env = env;
+        }
+
+        /// <summary>
+        /// Generates a PDF invoice and returns the file path.
+        /// </summary>
+        public string GenerateInvoice(OrderSummaryViewModel order, string customerName = "Customer")
+        {
+            try
+            {
+                // Create Invoices folder if it doesn't exist
+                string invoicesPath = Path.Combine(_env.WebRootPath, "Invoices");
+                if (!Directory.Exists(invoicesPath))
+                {
+                    Directory.CreateDirectory(invoicesPath);
+                }
+
+                // Generate unique filename: Invoice_OrderId_Timestamp.pdf
+                string fileName = $"Invoice_{order.OrderId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+                string filePath = Path.Combine(invoicesPath, fileName);
+
+                // Create PDF
+                using (var writer = new PdfWriter(filePath))
+                using (var pdf = new PdfDocument(writer))
+                using (var document = new Document(pdf))
+                {
+                    // Set document margins
+                    document.SetMargins(30, 30, 30, 30);
+
+                    // ===== HEADER =====
+                    var headerTable = new Table(2);
+                    headerTable.SetWidth(UnitValue.CreatePercentValue(100));
+
+                    // Logo/Title
+                    var titleCell = new Cell().Add(
+                        new Paragraph("🍔 BURGER SHOP POS")
+                            .SetFontSize(24)
+                            .SetBold()
+                            .SetTextAlignment(TextAlignment.LEFT))
+                        .SetBorder(null);
+
+                    // Order details (right side)
+                    var infoCell = new Cell().Add(
+                        new Paragraph($"Invoice #: {order.OrderId:D6}")
+                            .SetFontSize(10)
+                            .SetTextAlignment(TextAlignment.RIGHT))
+                        .Add(new Paragraph($"Date: {order.OrderDate:dd/MM/yyyy HH:mm}")
+                            .SetFontSize(10)
+                            .SetTextAlignment(TextAlignment.RIGHT))
+                        .SetBorder(null);
+
+                    headerTable.AddCell(titleCell);
+                    headerTable.AddCell(infoCell);
+                    document.Add(headerTable);
+
+                    document.Add(new Paragraph("\n"));
+
+                    // ===== CUSTOMER INFO =====
+                    document.Add(new Paragraph("CUSTOMER DETAILS")
+                        .SetFontSize(12)
+                        .SetBold()
+                        .SetUnderline());
+
+                    var customerInfo = new Table(2);
+                    customerInfo.SetWidth(UnitValue.CreatePercentValue(100));
+                    customerInfo.AddCell(new Cell().Add(new Paragraph("Customer:").SetBold()).SetBorder(null));
+                    customerInfo.AddCell(new Cell().Add(new Paragraph(customerName)).SetBorder(null));
+                    document.Add(customerInfo);
+
+                    document.Add(new Paragraph("\n"));
+
+                    // ===== ITEMS TABLE =====
+                    document.Add(new Paragraph("ORDER ITEMS")
+                        .SetFontSize(12)
+                        .SetBold()
+                        .SetUnderline());
+
+                    var table = new Table(new float[] { 5, 2, 2, 2 });
+                    table.SetWidth(UnitValue.CreatePercentValue(100));
+
+                    // Header row
+                    table.AddHeaderCell(new Cell().Add(new Paragraph("Item").SetBold()));
+                    table.AddHeaderCell(new Cell().Add(new Paragraph("Qty").SetBold()).SetTextAlignment(TextAlignment.CENTER));
+                    table.AddHeaderCell(new Cell().Add(new Paragraph("Price").SetBold()).SetTextAlignment(TextAlignment.RIGHT));
+                    table.AddHeaderCell(new Cell().Add(new Paragraph("Subtotal").SetBold()).SetTextAlignment(TextAlignment.RIGHT));
+
+                    // Add items
+                    foreach (var item in order.Items)
+                    {
+                        table.AddCell(new Cell().Add(new Paragraph(item.ItemName)));
+                        table.AddCell(new Cell().Add(new Paragraph(item.Quantity.ToString())).SetTextAlignment(TextAlignment.CENTER));
+                        table.AddCell(new Cell().Add(new Paragraph($"Rs {item.Price:F2}")).SetTextAlignment(TextAlignment.RIGHT));
+                        table.AddCell(new Cell().Add(new Paragraph($"Rs {item.SubTotal:F2}")).SetTextAlignment(TextAlignment.RIGHT));
+                    }
+
+                    document.Add(table);
+
+                    document.Add(new Paragraph("\n"));
+
+                    // ===== TOTALS =====
+                    var totalsTable = new Table(2);
+                    totalsTable.SetWidth(UnitValue.CreatePercentValue(100));
+                    totalsTable.SetMarginLeft(200);
+
+                    totalsTable.AddCell(new Cell().Add(new Paragraph("TOTAL AMOUNT:").SetBold().SetFontSize(12)));
+                    totalsTable.AddCell(new Cell().Add(
+                        new Paragraph($"Rs {order.TotalAmount:F2}")
+                            .SetBold()
+                            .SetFontSize(14)
+                            .SetTextAlignment(TextAlignment.RIGHT)));
+
+                    document.Add(totalsTable);
+
+                    document.Add(new Paragraph("\n"));
+
+                    // ===== FOOTER =====
+                    document.Add(new Paragraph("Thank you for your order!")
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(10)
+                        .SetItalic());
+
+                    document.Add(new Paragraph("Please visit again! 😊")
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(10));
+
+                    document.Add(new Paragraph("\n"));
+
+                    document.Add(new Paragraph("Generated by Burger Shop POS System")
+                        .SetTextAlignment(TextAlignment.CENTER)
+                        .SetFontSize(8)
+                        .SetTextRise(-2));
+                }
+
+                // Return relative path for storage in database
+                return $"/Invoices/{fileName}";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generating invoice: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Gets the absolute path for an invoice file
+        /// </summary>
+        public string GetInvoiceAbsolutePath(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath))
+                return string.Empty;
+
+            return Path.Combine(_env.WebRootPath, relativePath.TrimStart('/'));
+        }
+
+        /// <summary>
+        /// Checks if an invoice file exists
+        /// </summary>
+        public bool InvoiceExists(string relativePath)
+        {
+            if (string.IsNullOrEmpty(relativePath))
+                return false;
+
+            string absolutePath = GetInvoiceAbsolutePath(relativePath);
+            return File.Exists(absolutePath);
+        }
+    }
+}

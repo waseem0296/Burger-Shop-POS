@@ -1,0 +1,423 @@
+﻿//// ============================================================
+//// FILE: Data/AppDbContext.cs
+//// This is the EF Core "bridge" between your C# code and SQL Server.
+//// Think of it as your database manager class.
+//// When you run Scaffold-DbContext, this file is auto-generated.
+//// ============================================================
+
+//using BurgerShopPOS.Models;
+//using Microsoft.EntityFrameworkCore;
+
+//namespace BurgerShopPOS.Data
+//{
+//    public class AppDbContext : DbContext
+//    {
+//        // Constructor: ASP.NET passes database settings in automatically
+//        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+//        {
+//        }
+
+//        // Each DbSet = one table in SQL Server
+//        public DbSet<User> Users { get; set; }
+//        public DbSet<Product> Products { get; set; }
+//        public DbSet<Order> Orders { get; set; }
+//        public DbSet<OrderDetail> OrderDetails { get; set; }
+
+//        // Configure table relationships and column rules here
+//        protected override void OnModelCreating(ModelBuilder modelBuilder)
+//        {
+//            // User table settings
+//            modelBuilder.Entity<User>(entity =>
+//            {
+//                entity.HasKey(u => u.UserId);
+//                entity.Property(u => u.Username).IsRequired().HasMaxLength(50);
+//                entity.Property(u => u.PasswordHash).IsRequired();
+//                entity.Property(u => u.FullName).IsRequired().HasMaxLength(100);
+//                entity.Property(u => u.DateCreated).HasDefaultValueSql("GETDATE()");
+//            });
+
+//            // Product table settings
+//            modelBuilder.Entity<Product>(entity =>
+//            {
+//                entity.HasKey(p => p.ProductId);
+//                entity.Property(p => p.ItemName).IsRequired().HasMaxLength(100);
+//                entity.Property(p => p.Category).IsRequired().HasMaxLength(50);
+//                entity.Property(p => p.Price).HasColumnType("decimal(10,2)");
+//            });
+
+//            // Order table — linked to User (Cashier)
+//            modelBuilder.Entity<Order>(entity =>
+//            {
+//                entity.HasKey(o => o.OrderId);
+//                entity.Property(o => o.TotalAmount).HasColumnType("decimal(10,2)");
+//                entity.HasOne(o => o.Cashier)
+//                      .WithMany(u => u.Orders)
+//                      .HasForeignKey(o => o.CashierId);
+//            });
+
+//            // OrderDetail table — linked to both Order and Product
+//            modelBuilder.Entity<OrderDetail>(entity =>
+//            {
+//                entity.HasKey(od => od.OrderDetailId);
+//                entity.Property(od => od.UnitPrice).HasColumnType("decimal(10,2)");
+//                entity.Property(od => od.SubTotal).HasColumnType("decimal(10,2)");
+
+//                entity.HasOne(od => od.Order)
+//                      .WithMany(o => o.OrderDetails)
+//                      .HasForeignKey(od => od.OrderId);
+
+//                entity.HasOne(od => od.Product)
+//                      .WithMany(p => p.OrderDetails)
+//                      .HasForeignKey(od => od.ProductId);
+//            });
+
+//            // ========== SEED DATA ==========
+//            // Seed users: admin (Role 2 = SuperAdmin), cashier1 (Role 0 = Cashier)
+//            modelBuilder.Entity<User>().HasData(
+//                new User
+//                {
+//                    UserId = 1,
+//                    Username = "admin",
+//                    PasswordHash = "admin123",  // In production, use BCrypt!
+//                    FullName = "Administrator",
+//                    Role = 2,  // SuperAdmin
+//                    DateCreated = DateTime.Now
+//                },
+//                new User
+//                {
+//                    UserId = 2,
+//                    Username = "cashier1",
+//                    PasswordHash = "cashier123",  // In production, use BCrypt!
+//                    FullName = "John Cashier",
+//                    Role = 0,  // Cashier
+//                    DateCreated = DateTime.Now
+//                },
+//                new User
+//                {
+//                    UserId = 3,
+//                    Username = "cashier2",
+//                    PasswordHash = "cashier123",
+//                    FullName = "Jane Cashier",
+//                    Role = 0,  // Cashier
+//                    DateCreated = DateTime.Now
+//                }
+//            );
+
+//            // Seed products (Burger Shop items)
+//            modelBuilder.Entity<Product>().HasData(
+//                // Burgers
+//                new Product
+//                {
+//                    ProductId = 1,
+//                    ItemName = "Classic Cheeseburger",
+//                    Category = "Burgers",
+//                    Price = 5.99m,
+//                    StockQuantity = 50,
+//                    ExpiryDate = DateTime.Now.AddDays(30)
+//                },
+//                new Product
+//                {
+//                    ProductId = 2,
+//                    ItemName = "Double Burger",
+//                    Category = "Burgers",
+//                    Price = 7.99m,
+//                    StockQuantity = 35,
+//                    ExpiryDate = DateTime.Now.AddDays(30)
+//                },
+//                new Product
+//                {
+//                    ProductId = 3,
+//                    ItemName = "Spicy Burger",
+//                    Category = "Burgers",
+//                    Price = 6.49m,
+//                    StockQuantity = 40,
+//                    ExpiryDate = DateTime.Now.AddDays(30)
+//                },
+//                // Sides
+//                new Product
+//                {
+//                    ProductId = 4,
+//                    ItemName = "French Fries",
+//                    Category = "Sides",
+//                    Price = 2.99m,
+//                    StockQuantity = 100,
+//                    ExpiryDate = DateTime.Now.AddDays(7)
+//                },
+//                new Product
+//                {
+//                    ProductId = 5,
+//                    ItemName = "Onion Rings",
+//                    Category = "Sides",
+//                    Price = 3.49m,
+//                    StockQuantity = 60,
+//                    ExpiryDate = DateTime.Now.AddDays(7)
+//                },
+//                new Product
+//                {
+//                    ProductId = 6,
+//                    ItemName = "Coleslaw",
+//                    Category = "Sides",
+//                    Price = 1.99m,
+//                    StockQuantity = 30,
+//                    ExpiryDate = DateTime.Now.AddDays(3)
+//                },
+//                // Drinks
+//                new Product
+//                {
+//                    ProductId = 7,
+//                    ItemName = "Soft Drink (330ml)",
+//                    Category = "Drinks",
+//                    Price = 1.99m,
+//                    StockQuantity = 200,
+//                    ExpiryDate = DateTime.Now.AddDays(90)
+//                },
+//                new Product
+//                {
+//                    ProductId = 8,
+//                    ItemName = "Iced Tea (500ml)",
+//                    Category = "Drinks",
+//                    Price = 2.49m,
+//                    StockQuantity = 80,
+//                    ExpiryDate = DateTime.Now.AddDays(60)
+//                },
+//                new Product
+//                {
+//                    ProductId = 9,
+//                    ItemName = "Milkshake",
+//                    Category = "Drinks",
+//                    Price = 3.99m,
+//                    StockQuantity = 40,
+//                    ExpiryDate = DateTime.Now.AddDays(1)
+//                }
+//            );
+
+//            base.OnModelCreating(modelBuilder);
+//        }
+//    }
+//}
+
+using BurgerShopPOS.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace BurgerShopPOS.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
+
+        // Tables
+        public DbSet<User> Users { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderDetail> OrderDetails { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            // ==========================
+            // USER TABLE
+            // ==========================
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasKey(u => u.UserId);
+
+                entity.Property(u => u.Username)
+                      .IsRequired()
+                      .HasMaxLength(50);
+
+                entity.Property(u => u.PasswordHash)
+                      .IsRequired();
+
+                entity.Property(u => u.FullName)
+                      .IsRequired()
+                      .HasMaxLength(100);
+
+                entity.Property(u => u.DateCreated)
+                      .HasDefaultValueSql("GETDATE()");
+            });
+
+            // ==========================
+            // PRODUCT TABLE
+            // ==========================
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.HasKey(p => p.ProductId);
+
+                entity.Property(p => p.ItemName)
+                      .IsRequired()
+                      .HasMaxLength(100);
+
+                entity.Property(p => p.Category)
+                      .IsRequired()
+                      .HasMaxLength(50);
+
+                entity.Property(p => p.Price)
+                      .HasColumnType("decimal(10,2)");
+            });
+
+            // ==========================
+            // ORDER TABLE
+            // ==========================
+            modelBuilder.Entity<Order>(entity =>
+            {
+                entity.HasKey(o => o.OrderId);
+
+                entity.Property(o => o.TotalAmount)
+                      .HasColumnType("decimal(10,2)");
+
+                entity.HasOne(o => o.Cashier)
+                      .WithMany(u => u.Orders)
+                      .HasForeignKey(o => o.CashierId);
+            });
+
+            // ==========================
+            // ORDER DETAIL TABLE
+            // ==========================
+            modelBuilder.Entity<OrderDetail>(entity =>
+            {
+                entity.HasKey(od => od.OrderDetailId);
+
+                entity.Property(od => od.UnitPrice)
+                      .HasColumnType("decimal(10,2)");
+
+                entity.Property(od => od.SubTotal)
+                      .HasColumnType("decimal(10,2)");
+
+                entity.HasOne(od => od.Order)
+                      .WithMany(o => o.OrderDetails)
+                      .HasForeignKey(od => od.OrderId);
+
+                entity.HasOne(od => od.Product)
+                      .WithMany(p => p.OrderDetails)
+                      .HasForeignKey(od => od.ProductId);
+            });
+
+            // ==========================
+            // SEED USERS
+            // ==========================
+            modelBuilder.Entity<User>().HasData(
+                new User
+                {
+                    UserId = 1,
+                    Username = "admin",
+                    PasswordHash = "admin123",
+                    FullName = "Administrator",
+                    Role = 2
+                },
+                new User
+                {
+                    UserId = 2,
+                    Username = "cashier1",
+                    PasswordHash = "cashier123",
+                    FullName = "John Cashier",
+                    Role = 0
+                },
+                new User
+                {
+                    UserId = 3,
+                    Username = "cashier2",
+                    PasswordHash = "cashier123",
+                    FullName = "Jane Cashier",
+                    Role = 0
+                }
+            );
+
+            // ==========================
+            // SEED PRODUCTS
+            // ==========================
+            modelBuilder.Entity<Product>().HasData(
+
+                // Burgers
+                new Product
+                {
+                    ProductId = 1,
+                    ItemName = "Classic Cheeseburger",
+                    Category = "Burgers",
+                    Price = 5.99m,
+                    StockQuantity = 50,
+                    ExpiryDate = new DateTime(2026, 7, 25)
+                },
+                new Product
+                {
+                    ProductId = 2,
+                    ItemName = "Double Burger",
+                    Category = "Burgers",
+                    Price = 7.99m,
+                    StockQuantity = 35,
+                    ExpiryDate = new DateTime(2026, 7, 25)
+                },
+                new Product
+                {
+                    ProductId = 3,
+                    ItemName = "Spicy Burger",
+                    Category = "Burgers",
+                    Price = 6.49m,
+                    StockQuantity = 40,
+                    ExpiryDate = new DateTime(2026, 7, 25)
+                },
+
+                // Sides
+                new Product
+                {
+                    ProductId = 4,
+                    ItemName = "French Fries",
+                    Category = "Sides",
+                    Price = 2.99m,
+                    StockQuantity = 100,
+                    ExpiryDate = new DateTime(2026, 7, 2)
+                },
+                new Product
+                {
+                    ProductId = 5,
+                    ItemName = "Onion Rings",
+                    Category = "Sides",
+                    Price = 3.49m,
+                    StockQuantity = 60,
+                    ExpiryDate = new DateTime(2026, 7, 2)
+                },
+                new Product
+                {
+                    ProductId = 6,
+                    ItemName = "Coleslaw",
+                    Category = "Sides",
+                    Price = 1.99m,
+                    StockQuantity = 30,
+                    ExpiryDate = new DateTime(2026, 6, 28)
+                },
+
+                // Drinks
+                new Product
+                {
+                    ProductId = 7,
+                    ItemName = "Soft Drink (330ml)",
+                    Category = "Drinks",
+                    Price = 1.99m,
+                    StockQuantity = 200,
+                    ExpiryDate = new DateTime(2026, 9, 23)
+                },
+                new Product
+                {
+                    ProductId = 8,
+                    ItemName = "Iced Tea (500ml)",
+                    Category = "Drinks",
+                    Price = 2.49m,
+                    StockQuantity = 80,
+                    ExpiryDate = new DateTime(2026, 8, 24)
+                },
+                new Product
+                {
+                    ProductId = 9,
+                    ItemName = "Milkshake",
+                    Category = "Drinks",
+                    Price = 3.99m,
+                    StockQuantity = 2,
+                    ExpiryDate = new DateTime(2026, 6, 26)
+                }
+            );
+
+            base.OnModelCreating(modelBuilder);
+        }
+    }
+}

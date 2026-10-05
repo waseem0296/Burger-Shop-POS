@@ -1,0 +1,958 @@
+@* ============================================================
+   FILE: Pages/Admin/Dashboard.cshtml
+   Super Admin dashboard with analytics panels, CRUD, and alerts.
+   ============================================================ *@
+
+@page
+@model BurgerShopPOS.Pages.Admin.DashboardModel
+@using System.Security.Claims
+@{
+    Layout = null;
+    ViewData["Title"] = "Admin Dashboard — Burger Shop";
+    string adminName = User.FindFirstValue("FullName") ?? "Admin";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+    <style>
+        :root {
+            --orange: #FF6B00;
+            --orange-dark: #E05500;
+            --brown: #2C1810;
+            --sidebar-w: 240px;
+            --sidebar-bg: #1a0a00;
+            --bg: #F3F4F6;
+            --card: #ffffff;
+            --border: #E5E7EB;
+            --text: #111827;
+            --muted: #6B7280;
+            --green: #10B981;
+            --yellow: #F59E0B;
+            --red: #EF4444;
+            --blue: #3B82F6;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: var(--bg);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--sidebar-bg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 200;
+        }
+
+        .sidebar-brand {
+            padding: 1.5rem 1.2rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .sidebar-brand .logo {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: var(--orange);
+            letter-spacing: 2px;
+        }
+
+        .sidebar-brand .tagline {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 1rem 0;
+        }
+
+        .nav-item {
+            padding: 10px 1.2rem;
+            color: rgba(255,255,255,0.5);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255,107,0,0.1);
+            color: var(--orange);
+            border-left-color: var(--orange);
+        }
+
+        .nav-item i { width: 18px; text-align: center; }
+
+        .sidebar-footer {
+            padding: 1rem 1.2rem;
+            border-top: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .user-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 8px 10px;
+            background: rgba(255,107,0,0.1);
+            border-radius: 10px;
+            margin-bottom: 0.6rem;
+        }
+
+        .user-chip .avatar {
+            width: 32px; height: 32px;
+            background: var(--orange);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
+            color: white;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .user-chip .info { font-size: 0.78rem; }
+        .user-chip .info .name { color: white; font-weight: 700; }
+        .user-chip .info .role { color: var(--orange); }
+
+        .btn-logout-side {
+            display: block;
+            text-align: center;
+            background: rgba(239,68,68,0.1);
+            border: 1px solid rgba(239,68,68,0.2);
+            color: #FCA5A5;
+            border-radius: 8px;
+            padding: 7px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-logout-side:hover {
+            background: rgba(239,68,68,0.2);
+            color: white;
+        }
+
+        /* ── Main content area ── */
+        .main-content {
+            margin-left: var(--sidebar-w);
+            flex: 1;
+            padding: 1.5rem;
+            min-height: 100vh;
+        }
+
+        /* Page header */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            color: var(--brown);
+            letter-spacing: 2px;
+            margin: 0;
+        }
+
+        .date-badge {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 6px 14px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        /* ── KPI stat cards ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.2rem 1.4rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid var(--orange);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .stat-card .stat-icon {
+            width: 50px; height: 50px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .stat-card .stat-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.8rem;
+            letter-spacing: 1px;
+            line-height: 1;
+            color: var(--brown);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* ── Dashboard cards / panels ── */
+        .panel {
+            background: white;
+            border-radius: 16px;
+            padding: 1.3rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            margin-bottom: 1.2rem;
+        }
+
+        .panel-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.2rem;
+            color: var(--brown);
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.7rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Data tables inside panels */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            border-bottom: 2px solid var(--border);
+            background: #FAFAFA;
+        }
+
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #F3F4F6;
+            vertical-align: middle;
+        }
+
+        .data-table tr:last-child td { border-bottom: none; }
+
+        .data-table tr:hover td { background: #FAFAFA; }
+
+        /* Stock badges */
+        .badge-stock {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .badge-zero { background: #FEE2E2; color: #991B1B; }
+        .badge-low  { background: #FEF3C7; color: #92400E; }
+
+        /* Alert panel */
+        .alert-expiry {
+            background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+            border: 2px dashed #FF9800;
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            font-size: 0.85rem;
+        }
+
+        .alert-expiry .warn-icon { font-size: 1.3rem; }
+
+        /* Form inside panel */
+        .form-label {
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--brown);
+            margin-bottom: 4px;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.9rem;
+            padding: 9px 12px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(255,107,0,0.1);
+        }
+
+        .btn-orange {
+            background: var(--orange);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 800;
+            padding: 9px 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .btn-orange:hover { background: var(--orange-dark); }
+
+        .btn-danger-sm {
+            background: #FEE2E2;
+            border: none;
+            border-radius: 8px;
+            color: var(--red);
+            padding: 5px 12px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-danger-sm:hover { background: #FECACA; }
+
+        /* Success/error toast */
+        .toast-msg {
+            position: fixed;
+            bottom: 20px; right: 20px;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Tab content sections (shown/hidden) */
+        .tab-section { display: none; }
+        .tab-section.active { display: block; }
+
+        /* Responsive sidebar */
+        @@media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .main-content { margin-left: 0; }
+        }
+
+        /* Two-column grid layout for analytics */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        @@media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        /* Rank number badge */
+        .rank-badge {
+            width: 26px; height: 26px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ══════════════ SIDEBAR ══════════════ -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <div class="logo">🍔 Burger Shop</div>
+            <div class="tagline">Admin Control Panel</div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-item active" onclick="showSection('analytics')">
+                <i class="fas fa-chart-line"></i> Analytics
+            </div>
+            <div class="nav-item" onclick="showSection('stock')">
+                <i class="fas fa-boxes"></i> Stock Alerts
+            </div>
+            <div class="nav-item" onclick="showSection('expiry')">
+                <i class="fas fa-exclamation-triangle"></i> Expiry Alerts
+            </div>
+            <div class="nav-item" onclick="showSection('products')">
+                <i class="fas fa-hamburger"></i> Manage Menu
+            </div>
+            <div class="nav-item" onclick="showSection('users')">
+                <i class="fas fa-users"></i> Manage Users
+            </div>
+            <div class="nav-item" onclick="window.location.href='/Sales/Index'">
+                <i class="fas fa-cash-register"></i> Go to POS
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-chip">
+                <div class="avatar">@(adminName.Length > 0 ? adminName[0].ToString().ToUpper() : "A")</div>
+                <div class="info">
+                    <div class="name">@adminName</div>
+                    <div class="role">Super Admin</div>
+                </div>
+            </div>
+            <a href="/Account/Logout" class="btn-logout-side">
+                <i class="fas fa-sign-out-alt me-1"></i>Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- ══════════════ MAIN CONTENT ══════════════ -->
+    <div class="main-content">
+
+        <!-- Page header -->
+        <div class="page-header">
+            <h1 class="page-title">📊 Dashboard</h1>
+            <div class="date-badge">
+                <i class="fas fa-calendar me-1"></i>@DateTime.Now.ToString("dddd, dd MMM yyyy")
+            </div>
+        </div>
+
+        @* Show success/error messages from CRUD operations *@
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible fade show" style="border-radius:12px;">
+                <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" style="border-radius:12px;">
+                <i class="fas fa-exclamation-circle me-2"></i>@TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        }
+
+        <!-- ══ KPI Stats row (always visible) ══ -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:#FFF3E0;">💰</div>
+                <div>
+                    <div class="stat-value">Rs @Model.TodayRevenue.ToString("F2")</div>
+                    <div class="stat-label">Today's Revenue</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-left-color:var(--blue);">
+                <div class="stat-icon" style="background:#EFF6FF;">🧾</div>
+                <div>
+                    <div class="stat-value">@Model.TodayOrderCount</div>
+                    <div class="stat-label">Orders Today</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-left-color:var(--red);">
+                <div class="stat-icon" style="background:#FEF2F2;">⚠️</div>
+                <div>
+                    <div class="stat-value">@Model.LowStockProducts.Count</div>
+                    <div class="stat-label">Low Stock Items</div>
+                </div>
+            </div>
+            <div class="stat-card" style="border-left-color:var(--yellow);">
+                <div class="stat-icon" style="background:#FFFBEB;">⏰</div>
+                <div>
+                    <div class="stat-value">@Model.ExpiringProducts.Count</div>
+                    <div class="stat-label">Expiring Soon</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════ TAB SECTIONS ══════════ -->
+
+        <!-- 1. ANALYTICS SECTION -->
+        <div id="section-analytics" class="tab-section active">
+            <div class="grid-2">
+
+                <!-- Top Selling Products -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-trophy" style="color:var(--yellow);"></i>
+                        Top Products Today
+                    </div>
+                    @if (Model.TopProducts.Any())
+                    {
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Product</th>
+                                    <th>Sold</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{int rank = 1;}
+                                @foreach (var p in Model.TopProducts)
+                                {
+                                    string[] colors = {"#FF6B00","#3B82F6","#10B981","#F59E0B","#8B5CF6"};
+                                    string color = colors[(rank - 1) % colors.Length];
+                                    <tr>
+                                        <td>
+                                            <span class="rank-badge" style="background:@color;">@rank</span>
+                                        </td>
+                                        <td><strong>@p.ItemName</strong></td>
+                                        <td>@p.TotalSold units</td>
+                                        <td style="color:var(--green); font-weight:800;">Rs @p.TotalRevenue.ToString("F2")</td>
+                                    </tr>
+                                    rank++;
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="empty-state">
+                            <div style="font-size:2rem;">📊</div>
+                            No sales data for today yet.
+                        </div>
+                    }
+                </div>
+
+                <!-- Shift Performance -->
+                <div class="panel">
+                    <div class="panel-title">
+                        <i class="fas fa-clock" style="color:var(--orange);"></i>
+                        Shift Performance
+                    </div>
+                    <div style="text-align:center; padding: 1rem 0;">
+                        <div style="font-size:0.78rem; font-weight:700; text-transform:uppercase;
+                                    letter-spacing:1px; color:var(--muted); margin-bottom:0.3rem;">
+                            Revenue Since Midnight
+                        </div>
+                        <div style="font-family:'Bebas Neue',sans-serif; font-size:3.5rem;
+                                    color:var(--orange); letter-spacing:2px; line-height:1;">
+                            Rs @Model.TodayRevenue.ToString("F2")
+                        </div>
+                        <hr style="border-color:var(--border); margin: 1rem 0;" />
+                        <div style="display:flex; justify-content:space-around;">
+                            <div>
+                                <div style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; color:var(--blue);">
+                                    @Model.TodayOrderCount
+                                </div>
+                                <div style="font-size:0.75rem; color:var(--muted); font-weight:700; text-transform:uppercase;">
+                                    Orders
+                                </div>
+                            </div>
+                            <div>
+                                <div style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; color:var(--green);">
+                                    @(Model.TodayOrderCount > 0
+                                        ? "Rs " + (Model.TodayRevenue / Model.TodayOrderCount).ToString("F2")
+                                        : "Rs 0.00")
+                                </div>
+                                <div style="font-size:0.75rem; color:var(--muted); font-weight:700; text-transform:uppercase;">
+                                    Avg/Order
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. STOCK ALERTS SECTION -->
+        <div id="section-stock" class="tab-section">
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-exclamation-triangle" style="color:var(--red);"></i>
+                    Stock Control Alerts
+                    <span style="margin-left:auto; font-family:'Nunito'; font-size:0.8rem;
+                                 background:#FEE2E2; color:var(--red); padding:2px 10px; border-radius:20px;">
+                        @Model.LowStockProducts.Count item(s)
+                    </span>
+                </div>
+
+                @if (Model.LowStockProducts.Any())
+                {
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.LowStockProducts)
+                            {
+                                <tr>
+                                    <td><strong>@p.ItemName</strong></td>
+                                    <td style="color:var(--muted);">@p.Category</td>
+                                    <td>$@p.Price.ToString("F2")</td>
+                                    <td><strong style="font-size:1rem;">@p.StockQuantity</strong></td>
+                                    <td>
+                                        @if (p.StockQuantity == 0)
+                                        {
+                                            <span class="badge-stock badge-zero">OUT OF STOCK</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge-stock badge-low">LOW STOCK</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <div style="font-size:2rem; color:var(--green);">✅</div>
+                        All products are well-stocked!
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- 3. EXPIRY ALERTS SECTION -->
+        <div id="section-expiry" class="tab-section">
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-clock" style="color:var(--yellow);"></i>
+                    Expiry Alerts (Next 48 Hours)
+                </div>
+
+                @if (Model.ExpiringProducts.Any())
+                {
+                    @foreach (var p in Model.ExpiringProducts)
+                    {
+                        TimeSpan timeLeft = p.ExpiryDate - DateTime.Now;
+                        string timeLeftStr = timeLeft.TotalHours < 1
+                            ? $"{(int)timeLeft.TotalMinutes} minutes"
+                            : $"{(int)timeLeft.TotalHours} hours";
+
+                        <div class="alert-expiry">
+                            <div class="warn-icon">⚠️</div>
+                            <div style="flex:1;">
+                                <strong>@p.ItemName</strong>
+                                <div style="font-size:0.78rem; color:#92400E;">
+                                    Expires in @timeLeftStr — @p.ExpiryDate.ToString("dd MMM yyyy HH:mm")
+                                    <br/>
+                                    <strong>Action:</strong> Apply clearance discount or remove from menu immediately.
+                                </div>
+                            </div>
+                            <div style="text-align:right; font-weight:800; color:#D97706;">
+                                @p.StockQuantity in stock
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <div style="font-size:2rem; color:var(--green);">✅</div>
+                        No products expiring in the next 48 hours.
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- 4. MANAGE PRODUCTS (CRUD) -->
+        <div id="section-products" class="tab-section">
+
+            <!-- Add Product Form -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-plus-circle" style="color:var(--green);"></i>
+                    Add / Edit Product
+                </div>
+
+                <form method="post" asp-page-handler="SaveProduct">
+                    @Html.AntiForgeryToken()
+
+                    <!-- Hidden ProductId: 0 = new product, >0 = edit existing -->
+                    <input type="hidden" asp-for="ProductForm.ProductId" id="formProductId" />
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Item Name</label>
+                            <input asp-for="ProductForm.ItemName" class="form-control" placeholder="e.g. Classic Burger" />
+                            <span asp-validation-for="ProductForm.ItemName" class="text-danger" style="font-size:0.78rem;"></span>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Category</label>
+                            <select asp-for="ProductForm.Category" class="form-select">
+                                <option value="">Select...</option>
+                                <option value="Burgers">🍔 Burgers</option>
+                                <option value="Sides">🍟 Sides</option>
+                                <option value="Drinks">🥤 Drinks</option>
+                            </select>
+                            <span asp-validation-for="ProductForm.Category" class="text-danger" style="font-size:0.78rem;"></span>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Price (Rs)</label>
+                            <input asp-for="ProductForm.Price" type="number" step="0.01" min="0.01"
+                                   class="form-control" placeholder="0.00" />
+                            <span asp-validation-for="ProductForm.Price" class="text-danger" style="font-size:0.78rem;"></span>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Stock Qty</label>
+                            <input asp-for="ProductForm.StockQuantity" type="number" min="0"
+                                   class="form-control" placeholder="0" />
+                            <span asp-validation-for="ProductForm.StockQuantity" class="text-danger" style="font-size:0.78rem;"></span>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Expiry Date</label>
+                            <input asp-for="ProductForm.ExpiryDate" type="date" class="form-control" />
+                            <span asp-validation-for="ProductForm.ExpiryDate" class="text-danger" style="font-size:0.78rem;"></span>
+                        </div>
+                    </div>
+                    <div class="mt-3 d-flex gap-2">
+                        <button type="submit" class="btn-orange">
+                            <i class="fas fa-save me-1"></i>Save Product
+                        </button>
+                        <button type="button" onclick="resetProductForm()"
+                                style="background:#F3F4F6; border:none; border-radius:10px; padding:9px 18px;
+                                       font-weight:700; cursor:pointer; color:var(--muted);">
+                            Reset
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Products Table -->
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-list" style="color:var(--orange);"></i>
+                    All Products (@Model.AllProducts.Count)
+                </div>
+
+                @if (Model.AllProducts.Any())
+                {
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Expiry</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.AllProducts)
+                            {
+                                <tr>
+                                    <td style="color:var(--muted);">#@p.ProductId</td>
+                                    <td><strong>@p.ItemName</strong></td>
+                                    <td>@p.Category</td>
+                                    <td>Rs @p.Price.ToString("F2")</td>
+                                    <td>
+                                        <span style="font-weight:800; color:@(p.StockQuantity < 10 ? "var(--red)" : "var(--green)");">
+                                            @p.StockQuantity
+                                        </span>
+                                    </td>
+                                    <td style="font-size:0.8rem;">@p.ExpiryDate.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        <button onclick="fillEditForm(@p.ProductId, '@p.ItemName', '@p.Category',
+                                                          @p.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                                                          @p.StockQuantity, '@p.ExpiryDate.ToString("yyyy-MM-dd")')"
+                                                style="background:#EFF6FF; border:none; border-radius:8px; color:var(--blue);
+                                                       padding:5px 12px; font-size:0.78rem; font-weight:800; cursor:pointer; margin-right:4px;">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+
+                                        <form method="post" asp-page-handler="DeleteProduct" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@p.ProductId" />
+                                            <button type="submit" class="btn-danger-sm"
+                                                    onclick="return confirm('Delete @p.ItemName?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty-state">No products found. Add some above!</div>
+                }
+            </div>
+        </div>
+
+        <!-- 5. MANAGE USERS -->
+        <div id="section-users" class="tab-section">
+            <div class="panel">
+                <div class="panel-title">
+                    <i class="fas fa-users" style="color:var(--blue);"></i>
+                    System Users (@Model.AllUsers.Count)
+                </div>
+
+                @if (Model.AllUsers.Any())
+                {
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Full Name</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var u in Model.AllUsers)
+                            {
+                                string roleName = u.Role switch {
+                                    0 => "Cashier",
+                                    1 => "Admin",
+                                    2 => "SuperAdmin",
+                                    _ => "Unknown"
+                                };
+                                string roleColor = u.Role switch {
+                                    2 => "var(--orange)",
+                                    1 => "var(--blue)",
+                                    _ => "var(--green)"
+                                };
+                                <tr>
+                                    <td style="color:var(--muted);">#@u.UserId</td>
+                                    <td><strong>@u.FullName</strong></td>
+                                    <td style="font-family:monospace;">@u.Username</td>
+                                    <td>
+                                        <span style="background:rgba(0,0,0,0.05); padding:3px 10px;
+                                                     border-radius:20px; font-size:0.78rem; font-weight:800;
+                                                     color:@roleColor;">
+                                            @roleName
+                                        </span>
+                                    </td>
+                                    <td style="font-size:0.8rem;">@u.DateCreated.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        <form method="post" asp-page-handler="DeleteUser" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@u.UserId" />
+                                            <button type="submit" class="btn-danger-sm"
+                                                    onclick="return confirm('Delete user @u.Username?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="empty-state">No users found.</div>
+                }
+            </div>
+        </div>
+
+    </div> <!-- end .main-content -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    // ── Show/hide sidebar sections ────────────────────────────
+    function showSection(name) {
+        // Hide all sections
+        document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+        // Show selected section
+        document.getElementById('section-' + name).classList.add('active');
+
+        // Update active nav item styling
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+    }
+
+    // ── Fill the product form for editing ────────────────────
+    function fillEditForm(id, name, category, price, stock, expiry) {
+        document.getElementById('formProductId').value       = id;
+        document.querySelector('[name="ProductForm.ItemName"]').value      = name;
+        document.querySelector('[name="ProductForm.Category"]').value      = category;
+        document.querySelector('[name="ProductForm.Price"]').value         = price;
+        document.querySelector('[name="ProductForm.StockQuantity"]').value = stock;
+        document.querySelector('[name="ProductForm.ExpiryDate"]').value    = expiry;
+
+        // Switch to the products tab
+        document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('section-products').classList.add('active');
+
+        // Scroll to top of form
+        document.querySelector('.main-content').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── Reset product form ────────────────────────────────────
+    function resetProductForm() {
+        document.getElementById('formProductId').value       = '0';
+        document.querySelector('[name="ProductForm.ItemName"]').value      = '';
+        document.querySelector('[name="ProductForm.Category"]').value      = '';
+        document.querySelector('[name="ProductForm.Price"]').value         = '';
+        document.querySelector('[name="ProductForm.StockQuantity"]').value = '';
+        document.querySelector('[name="ProductForm.ExpiryDate"]').value    = '';
+    }
+    </script>
+
+</body>
+</html>

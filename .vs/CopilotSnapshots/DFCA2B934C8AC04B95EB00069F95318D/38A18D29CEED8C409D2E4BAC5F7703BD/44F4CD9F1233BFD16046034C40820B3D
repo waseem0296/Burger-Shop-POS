@@ -1,0 +1,52 @@
+﻿// ============================================================
+// FILE: Models/Order.cs
+// Represents the "Orders" table in your SQL database.
+// ============================================================
+
+namespace BurgerShopPOS.Models
+{
+    public class Order
+    {
+        public int OrderId { get; set; }
+        public DateTime OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+
+        // FK → User (Customer who placed this order)
+        public int CustomerId { get; set; }
+
+        // Path to the generated invoice PDF file
+        public string InvoicePath { get; set; } = string.Empty;
+
+        // Navigation properties
+        public User? Customer { get; set; }
+        public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+    }
+}
+
+
+// ============================================================
+// FILE: Models/OrderDetail.cs
+// Represents the "OrderDetails" table — each line item in an order.
+// ============================================================
+
+namespace BurgerShopPOS.Models
+{
+    public class OrderDetail
+    {
+        public int OrderDetailId { get; set; }
+
+        // FK → Order
+        public int OrderId { get; set; }
+
+        // FK → Product
+        public int ProductId { get; set; }
+
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+        public decimal SubTotal { get; set; }
+
+        // Navigation properties
+        public Order? Order { get; set; }
+        public Product? Product { get; set; }
+    }
+}

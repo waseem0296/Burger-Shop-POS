@@ -1,0 +1,98 @@
+﻿// ============================================================
+// FILE: ViewModels/CartItemViewModel.cs
+// This holds ONE item in the shopping cart (in memory only, not DB).
+// ============================================================
+
+namespace BurgerShopPOS.ViewModels
+{
+    public class CartItemViewModel
+    {
+        public int ProductId { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public int Quantity { get; set; }
+
+        // SubTotal = Price × Quantity (calculated automatically)
+        public decimal SubTotal => Price * Quantity;
+    }
+}
+
+
+// ============================================================
+// FILE: ViewModels/OrderSummaryViewModel.cs
+// Summary data shown after a successful checkout.
+// ============================================================
+
+namespace BurgerShopPOS.ViewModels
+{
+    public class OrderSummaryViewModel
+    {
+        public int OrderId { get; set; }
+        public DateTime OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string CashierName { get; set; } = string.Empty;
+        public string InvoicePath { get; set; } = string.Empty;
+        public List<CartItemViewModel> Items { get; set; } = new();
+    }
+}
+
+
+// ============================================================
+// FILE: ViewModels/LoginViewModel.cs
+// Holds data the user types on the login page.
+// [Required] = field must not be empty
+// ============================================================
+
+using System.ComponentModel.DataAnnotations;
+
+namespace BurgerShopPOS.ViewModels
+{
+    public class LoginViewModel
+    {
+        [Required(ErrorMessage = "Username is required")]
+        [Display(Name = "Username")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        [DataType(DataType.Password)]
+        [Display(Name = "Password")]
+        public string Password { get; set; } = string.Empty;
+    }
+}
+
+
+// ============================================================
+// FILE: ViewModels/ProductFormViewModel.cs
+// Used in the Admin CRUD form to add/edit products.
+// ============================================================
+
+using System.ComponentModel.DataAnnotations;
+
+namespace BurgerShopPOS.ViewModels
+{
+    public class ProductFormViewModel
+    {
+        public int ProductId { get; set; }
+
+        [Required(ErrorMessage = "Item name is required")]
+        [Display(Name = "Item Name")]
+        public string ItemName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please select a category")]
+        public string Category { get; set; } = string.Empty;
+
+        [Required]
+        [Range(0.01, 9999.99, ErrorMessage = "Price must be between 0.01 and 9999.99")]
+        public decimal Price { get; set; }
+
+        [Required]
+        [Range(0, int.MaxValue, ErrorMessage = "Stock cannot be negative")]
+        [Display(Name = "Stock Quantity")]
+        public int StockQuantity { get; set; }
+
+        [Required]
+        [DataType(DataType.Date)]
+        [Display(Name = "Expiry Date")]
+        public DateTime ExpiryDate { get; set; } = DateTime.Today.AddMonths(1);
+    }
+}

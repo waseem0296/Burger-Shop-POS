@@ -1,0 +1,341 @@
+﻿@* ============================================================
+   FILE: Pages/Account/Login.cshtml
+   This is the HTML for the Login page.
+   @Model refers to Login.cshtml.cs (the backend)
+   ============================================================ *@
+
+@page
+@model BurgerShopPOS.Pages.Account.LoginModel
+@{
+    Layout = null; // No shared layout — login is a standalone page
+    ViewData["Title"] = "Login — Burger Shop POS";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+
+    <!-- Google Fonts: Bebas Neue for headings, Nunito for body -->
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Bootstrap 5 for layout utilities -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+    <style>
+        /* ── Root color palette ── */
+        :root {
+            --orange: #FF6B00;
+            --orange-dark: #E05500;
+            --orange-light: #FF8C38;
+            --brown: #2C1810;
+            --cream: #FFF8F0;
+            --gray: #6B7280;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            background: linear-gradient(135deg, #1a0a00 0%, #3d1a00 40%, #2C1810 100%);
+            overflow: hidden;
+        }
+
+        /* ── Left panel: branding ── */
+        .brand-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            position: relative;
+        }
+
+        /* Decorative circle blobs in background */
+        .brand-panel::before {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,107,0,0.15) 0%, transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .burger-logo {
+            font-size: 7rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 30px rgba(255,107,0,0.5));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @@keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-12px); }
+        }
+
+        .brand-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 4rem;
+            color: var(--orange);
+            letter-spacing: 4px;
+            text-shadow: 0 0 40px rgba(255,107,0,0.4);
+            line-height: 1;
+        }
+
+        .brand-subtitle {
+            color: rgba(255,255,255,0.5);
+            font-size: 1rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 0.5rem;
+        }
+
+        .brand-tagline {
+            margin-top: 2rem;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 300px;
+            line-height: 1.6;
+        }
+
+        /* ── Right panel: login form ── */
+        .login-panel {
+            width: 480px;
+            min-height: 100vh;
+            background: var(--cream);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 2.5rem;
+            clip-path: polygon(8% 0%, 100% 0%, 100% 100%, 0% 100%);
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .login-card h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.5rem;
+            color: var(--brown);
+            letter-spacing: 2px;
+            margin-bottom: 0.25rem;
+        }
+
+        .login-card p {
+            color: var(--gray);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Form fields */
+        .field-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .field-group label {
+            display: block;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--brown);
+            margin-bottom: 0.4rem;
+        }
+
+        .field-icon-wrap {
+            position: relative;
+        }
+
+        .field-icon-wrap i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--orange);
+            font-size: 0.9rem;
+        }
+
+        .field-icon-wrap input {
+            width: 100%;
+            padding: 12px 14px 12px 40px;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.95rem;
+            background: white;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .field-icon-wrap input:focus {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(255,107,0,0.15);
+        }
+
+        /* Validation error message */
+        .text-danger {
+            font-size: 0.8rem;
+            color: #DC2626 !important;
+            margin-top: 4px;
+            display: block;
+        }
+
+        /* Login button */
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 4px 20px rgba(255,107,0,0.4);
+            margin-top: 0.5rem;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,107,0,0.5);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        /* Error alert box */
+        .alert-error {
+            background: #FEF2F2;
+            border: 1.5px solid #FECACA;
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #991B1B;
+            font-size: 0.88rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Demo credentials hint box */
+        .hint-box {
+            margin-top: 1.5rem;
+            background: #FFF3E0;
+            border: 1.5px dashed var(--orange-light);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            color: var(--brown);
+        }
+
+        .hint-box strong {
+            color: var(--orange-dark);
+        }
+
+        /* Responsive: stack panels on small screens */
+        @@media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .brand-panel { min-height: 220px; padding: 2rem 1rem; }
+            .burger-logo { font-size: 4rem; }
+            .brand-title { font-size: 2.5rem; }
+            .login-panel {
+                width: 100%;
+                min-height: auto;
+                clip-path: none;
+                border-radius: 30px 30px 0 0;
+                padding: 2rem 1.5rem;
+                margin-top: -20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── Left: Branding panel ── -->
+    <div class="brand-panel">
+        <div class="burger-logo">🍔</div>
+        <div class="brand-title">Burger Shop</div>
+        <div class="brand-subtitle">Point of Sale System</div>
+        <div class="brand-tagline">
+            Fast, reliable, and delicious. Managing every order from grill to customer.
+        </div>
+    </div>
+
+    <!-- ── Right: Login form panel ── -->
+    <div class="login-panel">
+        <div class="login-card">
+            <h2>Welcome Back</h2>
+            <p>Sign in to your POS account</p>
+
+            @* Show error message if login failed *@
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="alert-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    @Model.ErrorMessage
+                </div>
+            }
+
+            @* The login form — asp-page-handler="Async" calls OnPostAsync() *@
+            <form method="post">
+                @* Anti-forgery token (security, generated automatically) *@
+                @Html.AntiForgeryToken()
+
+                <!-- Username field -->
+                <div class="field-group">
+                    <label asp-for="Input.Username"></label>
+                    <div class="field-icon-wrap">
+                        <i class="fas fa-user"></i>
+                        <input asp-for="Input.Username"
+                               placeholder="Enter your username"
+                               autocomplete="username" />
+                    </div>
+                    <span asp-validation-for="Input.Username" class="text-danger"></span>
+                </div>
+
+                <!-- Password field -->
+                <div class="field-group">
+                    <label asp-for="Input.Password"></label>
+                    <div class="field-icon-wrap">
+                        <i class="fas fa-lock"></i>
+                        <input asp-for="Input.Password"
+                               placeholder="Enter your password"
+                               autocomplete="current-password" />
+                    </div>
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+
+                <!-- Submit button -->
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt me-2"></i> SIGN IN
+                </button>
+            </form>
+
+            <!-- Demo credentials hint for testing -->
+            <div class="hint-box">
+                <strong>🧪 Demo Accounts:</strong><br />
+                Cashier: <strong>cashier1</strong> / cashier123<br />
+                SuperAdmin: <strong>admin</strong> / admin123
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery validation (checks Required fields before form submits) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.20.0/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+</body>
+</html>

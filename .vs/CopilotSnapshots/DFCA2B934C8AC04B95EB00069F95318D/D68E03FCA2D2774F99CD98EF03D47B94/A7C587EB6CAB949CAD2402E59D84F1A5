@@ -1,0 +1,81 @@
+﻿// ============================================================
+// FILE: Services/InvoiceService.cs
+// This service generates a text-based invoice receipt file.
+// It saves the file to wwwroot/Invoices/ folder.
+// ============================================================
+
+using BurgerShopPOS.ViewModels;
+
+namespace BurgerShopPOS.Services
+{
+    public class InvoiceService
+    {
+        // IWebHostEnvironment tells us where wwwroot folder is on disk
+        private readonly IWebHostEnvironment _env;
+
+        public InvoiceService(IWebHostEnvironment env)
+        {
+            _env = env;
+        }
+
+        // Generates a receipt text file and returns the file path
+        public string GenerateInvoice(OrderSummaryViewModel order)
+        {
+            try
+            {
+                // Build the path: wwwroot/Invoices/
+                string invoicesFolder = Path.Combine(_env.WebRootPath, "Invoices");
+
+                // Create the folder if it doesn't exist yet
+                if (!Directory.Exists(invoicesFolder))
+                {
+                    Directory.CreateDirectory(invoicesFolder);
+                }
+
+                // Name the file like: Invoice_101_20240115.txt
+                string fileName = $"Invoice_{order.OrderId}_{order.OrderDate:yyyyMMdd}.txt";
+                string fullPath = Path.Combine(invoicesFolder, fileName);
+
+                // Build the receipt content line by line
+                var lines = new List<string>();
+                lines.Add("========================================");
+                lines.Add("         🍔 BURGER SHOP POS            ");
+                lines.Add("========================================");
+                lines.Add($"  Invoice #: {order.OrderId}");
+                lines.Add($"  Date     : {order.OrderDate:dd MMM yyyy HH:mm}");
+                lines.Add($"  Cashier  : {order.CashierName}");
+                lines.Add("----------------------------------------");
+                lines.Add("  ITEM                  QTY    SUBTOTAL");
+                lines.Add("----------------------------------------");
+
+                // Loop through each item in the order
+                foreach (var item in order.Items)
+                {
+                    // Format: "Classic Burger           2    $15.98"
+                    string itemName = item.ItemName.PadRight(22);
+                    string qty = item.Quantity.ToString().PadRight(6);
+                    string sub = $"${item.SubTotal:F2}";
+                    lines.Add($"  {itemName} {qty} {sub}");
+                }
+
+                lines.Add("----------------------------------------");
+                lines.Add($"  TOTAL:                      ${order.TotalAmount:F2}");
+                lines.Add("========================================");
+                lines.Add("   Thank you! Come again soon! 😊      ");
+                lines.Add("========================================");
+
+                // Write all lines to the file
+                File.WriteAllLines(fullPath, lines);
+
+                // Return the relative web path (used for download links)
+                return $"/Invoices/{fileName}";
+            }
+            catch (Exception ex)
+            {
+                // Log the error and return empty string if file creation fails
+                Console.WriteLine($"Invoice generation error: {ex.Message}");
+                return string.Empty;
+            }
+        }
+    }
+}

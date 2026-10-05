@@ -1,0 +1,990 @@
+﻿@* ============================================================
+   FILE: Pages/Sales/Index.cshtml
+   The main POS screen for cashiers.
+   Left side: product grid | Right side: live cart
+   ============================================================ *@
+
+@page
+@model BurgerShopPOS.Pages.Sales.IndexModel
+@using System.Security.Claims
+@{
+    Layout = null;
+    ViewData["Title"] = "POS — Burger Shop";
+    // Get cashier's name from login cookie claims
+    string cashierName = User.FindFirstValue("FullName") ?? User.Identity?.Name ?? "Cashier";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+
+    <style>
+        :root {
+            --orange: #FF6B00;
+            --orange-dark: #E05500;
+            --brown: #2C1810;
+            --cream: #FFF8F0;
+            --sidebar-bg: #1a0a00;
+            --panel-bg: #f9f9f9;
+            --card-bg: #ffffff;
+            --text-muted: #9CA3AF;
+            --border: #E5E7EB;
+            --green: #10B981;
+            --red: #EF4444;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: #F3F4F6;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top navigation bar ── */
+        .top-bar {
+            background: var(--sidebar-bg);
+            color: white;
+            padding: 0 1.5rem;
+            height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .top-bar .brand {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: var(--orange);
+            letter-spacing: 2px;
+        }
+
+        .top-bar .cashier-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.88rem;
+        }
+
+        .cashier-badge {
+            background: rgba(255,107,0,0.15);
+            border: 1px solid rgba(255,107,0,0.3);
+            border-radius: 20px;
+            padding: 4px 14px;
+            color: var(--orange);
+            font-weight: 700;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            padding: 5px 14px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-logout:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        /* ── Main split layout ── */
+        .pos-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 0;
+        }
+
+        /* ── LEFT: Products panel ── */
+        .products-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.2rem;
+            overflow: hidden;
+            background: #F3F4F6;
+        }
+
+        /* Search bar */
+        .search-wrap {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .search-wrap i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 14px 10px 40px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-family: 'Nunito', sans-serif;
+            font-size: 0.92rem;
+            outline: none;
+            transition: border-color 0.2s;
+            background: white;
+        }
+
+        .search-input:focus {
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(255,107,0,0.1);
+        }
+
+        /* Category tabs */
+        .category-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .cat-tab {
+            padding: 7px 18px;
+            border-radius: 20px;
+            border: 2px solid var(--border);
+            background: white;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 0.83rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-muted);
+        }
+
+        .cat-tab.active, .cat-tab:hover {
+            background: var(--orange);
+            border-color: var(--orange);
+            color: white;
+        }
+
+        /* Product cards grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 0.85rem;
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 4px;
+        }
+
+        .products-grid::-webkit-scrollbar { width: 5px; }
+        .products-grid::-webkit-scrollbar-track { background: transparent; }
+        .products-grid::-webkit-scrollbar-thumb { background: #DDD; border-radius: 4px; }
+
+        /* Individual product card button */
+        .product-card {
+            background: white;
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 1rem 0.8rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            position: relative;
+        }
+
+        .product-card:hover {
+            border-color: var(--orange);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255,107,0,0.15);
+        }
+
+        .product-card:active {
+            transform: translateY(0);
+        }
+
+        .product-card .emoji {
+            font-size: 2.2rem;
+            display: block;
+            margin-bottom: 0.4rem;
+        }
+
+        .product-card .item-name {
+            font-weight: 800;
+            font-size: 0.82rem;
+            color: var(--brown);
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+        }
+
+        .product-card .item-price {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.1rem;
+            color: var(--orange);
+            letter-spacing: 1px;
+        }
+
+        /* Out-of-stock overlay */
+        .product-card.out-of-stock {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .out-of-stock-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--red);
+            color: white;
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        /* ── RIGHT: Cart panel ── */
+        .cart-panel {
+            width: 380px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .cart-header {
+            padding: 1.2rem 1.5rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .cart-header h5 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.4rem;
+            color: var(--brown);
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        /* Cart table area — scrollable */
+        .cart-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 0;
+        }
+
+        .cart-items::-webkit-scrollbar { width: 4px; }
+        .cart-items::-webkit-scrollbar-thumb { background: #DDD; border-radius: 4px; }
+
+        /* Empty cart message */
+        .empty-cart {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-muted);
+        }
+
+        .empty-cart .icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Cart table */
+        #cartTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #cartTable th {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        #cartTable td {
+            padding: 10px 12px;
+            vertical-align: middle;
+            border-bottom: 1px solid #F9FAFB;
+        }
+
+        /* Quantity input in cart */
+        .qty-input {
+            width: 58px;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            text-align: center;
+            padding: 5px;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .qty-input:focus {
+            border-color: var(--orange);
+        }
+
+        /* Delete button */
+        .btn-delete {
+            background: #FEF2F2;
+            border: none;
+            color: var(--red);
+            border-radius: 8px;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78rem;
+            transition: background 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: #FECACA;
+        }
+
+        /* Cart footer: totals + checkout */
+        .cart-footer {
+            padding: 1rem 1.5rem;
+            border-top: 2px solid var(--border);
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .total-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .total-amount {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            color: var(--brown);
+            letter-spacing: 1px;
+        }
+
+        .btn-checkout {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--orange), var(--orange-dark));
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 4px 15px rgba(255,107,0,0.4);
+        }
+
+        .btn-checkout:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255,107,0,0.5);
+        }
+
+        .btn-checkout:disabled {
+            background: #D1D5DB;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ── Success receipt modal overlay ── */
+        .receipt-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .receipt-overlay.show {
+            display: flex;
+        }
+
+        .receipt-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            width: 380px;
+            max-width: 95vw;
+            text-align: center;
+            animation: popIn 0.3s ease;
+        }
+
+        @@keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+
+        .receipt-modal .success-icon {
+            font-size: 3.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .receipt-modal h4 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.8rem;
+            color: var(--brown);
+            letter-spacing: 1px;
+            margin-bottom: 0.25rem;
+        }
+
+        .receipt-total {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.5rem;
+            color: var(--orange);
+            letter-spacing: 1px;
+            margin: 0.5rem 0;
+        }
+
+        .receipt-modal .btn-new {
+            margin-top: 1rem;
+            width: 100%;
+            padding: 12px;
+            background: var(--green);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        .receipt-modal .btn-invoice {
+            margin-top: 0.5rem;
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            color: var(--brown);
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+        }
+
+        /* ── Responsive ── */
+        @@media (max-width: 900px) {
+            .cart-panel { width: 300px; }
+            .products-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+        }
+
+        @@media (max-width: 650px) {
+            .pos-container { flex-direction: column; }
+            .cart-panel { width: 100%; height: 50vh; border-left: none; border-top: 2px solid var(--border); }
+            .products-panel { height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── Top navigation bar ── -->
+    <div class="top-bar">
+        <div class="brand">🍔 Burger Shop POS</div>
+        <div class="cashier-info">
+            <div class="cashier-badge">
+                <i class="fas fa-user-circle me-1"></i>@cashierName
+            </div>
+            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Admin"))
+            {
+                <a href="/Admin/Dashboard" class="btn-logout">
+                    <i class="fas fa-chart-bar me-1"></i>Dashboard
+                </a>
+            }
+            <a href="/Account/Logout" class="btn-logout">
+                <i class="fas fa-sign-out-alt me-1"></i>Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- ── Main POS split layout ── -->
+    <div class="pos-container">
+
+        <!-- ══════════════ LEFT: Products Panel ══════════════ -->
+        <div class="products-panel">
+
+            <!-- Search bar -->
+            <div class="search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" class="search-input"
+                       placeholder="Search for burgers, sides, drinks..." />
+            </div>
+
+            <!-- Category filter tabs -->
+            <div class="category-tabs">
+                <button class="cat-tab active" data-category="all">🍽️ All Items</button>
+                <button class="cat-tab" data-category="Burgers">🍔 Burgers</button>
+                <button class="cat-tab" data-category="Sides">🍟 Sides</button>
+                <button class="cat-tab" data-category="Drinks">🥤 Drinks</button>
+            </div>
+
+            <!-- Product cards grid (populated from Razor + filtered by JS) -->
+            <div class="products-grid" id="productsGrid">
+                @foreach (var product in Model.Products)
+                {
+                    // Choose an emoji based on category
+                    string emoji = product.Category switch {
+                        "Burgers" => "🍔",
+                        "Sides"   => "🍟",
+                        "Drinks"  => "🥤",
+                        _         => "🍽️"
+                    };
+
+                    bool isOutOfStock = product.StockQuantity <= 0;
+
+                    <div class="product-card @(isOutOfStock ? "out-of-stock" : "")"
+                         data-category="@product.Category"
+                         data-id="@product.ProductId"
+                         data-name="@product.ItemName"
+                         data-price="@product.Price"
+                         data-stock="@product.StockQuantity"
+                         onclick="addToCart(this)">
+
+                        @if (isOutOfStock)
+                        {
+                            <span class="out-of-stock-badge">Out of Stock</span>
+                        }
+
+                        <span class="emoji">@emoji</span>
+                        <div class="item-name">@product.ItemName</div>
+                        <div class="item-price">$@product.Price.ToString("F2")</div>
+
+                        @if (product.StockQuantity > 0 && product.StockQuantity <= 5)
+                        {
+                            <small style="color:#F59E0B; font-size:0.7rem; font-weight:700;">
+                                Only @product.StockQuantity left!
+                            </small>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ══════════════ RIGHT: Cart Panel ══════════════ -->
+        <div class="cart-panel">
+
+            <div class="cart-header">
+                <h5><i class="fas fa-shopping-basket me-2" style="color:var(--orange)"></i>Current Order</h5>
+            </div>
+
+            <!-- Cart items area — starts empty -->
+            <div class="cart-items" id="cartItems">
+                <div class="empty-cart" id="emptyCartMsg">
+                    <div class="icon">🛒</div>
+                    <div style="font-weight:700;">Cart is empty</div>
+                    <div style="font-size:0.82rem; margin-top:4px;">Click a product to add it</div>
+                </div>
+
+                <!-- Table that fills with cart rows (hidden when empty) -->
+                <table id="cartTable" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartBody">
+                        <!-- JavaScript adds rows here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer: total + checkout button -->
+            <div class="cart-footer">
+                <div class="total-row">
+                    <div>
+                        <div class="total-label">ORDER TOTAL</div>
+                        <div class="total-amount" id="orderTotal">$0.00</div>
+                    </div>
+                    <div style="text-align:right; color:var(--text-muted); font-size:0.82rem;">
+                        <span id="itemCount">0</span> item(s)
+                    </div>
+                </div>
+
+                <button class="btn-checkout" id="checkoutBtn" disabled onclick="processCheckout()">
+                    <i class="fas fa-credit-card me-2"></i>COMPLETE ORDER
+                </button>
+
+                <button onclick="clearCart()"
+                        style="width:100%; margin-top:0.5rem; padding:8px; background:transparent;
+                               border:1.5px solid var(--border); border-radius:10px;
+                               color:var(--text-muted); font-weight:700; cursor:pointer; font-size:0.85rem;">
+                    <i class="fas fa-trash me-1"></i>Clear All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Success receipt overlay (shown after checkout) ── -->
+    <div class="receipt-overlay" id="receiptOverlay">
+        <div class="receipt-modal">
+            <div class="success-icon">✅</div>
+            <h4>Order Complete!</h4>
+            <div style="color:var(--text-muted); font-size:0.88rem;">Order #<span id="receiptOrderId"></span></div>
+            <div class="receipt-total" id="receiptTotal">$0.00</div>
+            <hr style="border-color:var(--border);" />
+            <div id="receiptItems" style="text-align:left; font-size:0.85rem; max-height:200px; overflow-y:auto;"></div>
+            <a id="invoiceLink" href="#" class="btn-invoice" target="_blank">
+                <i class="fas fa-file-alt me-1"></i>Download Invoice
+            </a>
+            <button class="btn-new" onclick="startNewOrder()">
+                <i class="fas fa-plus me-2"></i>NEW ORDER
+            </button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+    <script>
+    // ============================================================
+    // JAVASCRIPT: Cart Logic
+    // This runs entirely in the browser (no page refresh needed).
+    // ============================================================
+
+    // In-memory cart: an object where keys are product IDs
+    // Example: { 1: {id:1, name:"Burger", price:5.99, qty:2}, ... }
+    let cart = {};
+
+    // ── Add a product to the cart ──────────────────────────────
+    function addToCart(card) {
+        // Read data attributes from the clicked product card
+        const id    = parseInt(card.dataset.id);
+        const name  = card.dataset.name;
+        const price = parseFloat(card.dataset.price);
+        const stock = parseInt(card.dataset.stock);
+
+        // If item already in cart, increase quantity
+        if (cart[id]) {
+            // Don't exceed available stock
+            if (cart[id].qty >= stock) {
+                showToast(`Max stock (${stock}) reached for ${name}`, 'warning');
+                return;
+            }
+            cart[id].qty += 1;
+        } else {
+            // New item — add to cart object
+            cart[id] = { id, name, price, qty: 1, stock };
+        }
+
+        // Re-render the cart table with updated data
+        renderCart();
+
+        // Brief pulse animation on the card
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => card.style.transform = '', 150);
+    }
+
+    // ── Render (redraw) the entire cart table ──────────────────
+    function renderCart() {
+        const cartBody  = document.getElementById('cartBody');
+        const cartTable = document.getElementById('cartTable');
+        const emptyMsg  = document.getElementById('emptyCartMsg');
+        const checkoutBtn = document.getElementById('checkoutBtn');
+
+        // Check if cart has any items
+        const itemIds = Object.keys(cart);
+
+        if (itemIds.length === 0) {
+            // Show empty message, hide table
+            cartTable.style.display = 'none';
+            emptyMsg.style.display  = 'block';
+            checkoutBtn.disabled    = true;
+            updateTotals();
+            return;
+        }
+
+        // Has items: show table, hide empty message
+        cartTable.style.display = 'table';
+        emptyMsg.style.display  = 'none';
+        checkoutBtn.disabled    = false;
+
+        // Build HTML rows for each cart item
+        let html = '';
+        itemIds.forEach(id => {
+            const item    = cart[id];
+            const subTotal = (item.price * item.qty).toFixed(2);
+            html += `
+                <tr id="row-${id}">
+                    <td>
+                        <div style="font-weight:700; font-size:0.85rem;">${item.name}</div>
+                        <div style="color:var(--text-muted); font-size:0.78rem;">$${item.price.toFixed(2)} each</div>
+                    </td>
+                    <td>
+                        <!-- Quantity input: changing this auto-recalculates -->
+                        <input type="number"
+                               class="qty-input"
+                               value="${item.qty}"
+                               min="1"
+                               max="${item.stock}"
+                               onchange="updateQty(${id}, this.value)" />
+                    </td>
+                    <td>
+                        <strong style="color:var(--orange);">$${subTotal}</strong>
+                    </td>
+                    <td>
+                        <button class="btn-delete" onclick="removeItem(${id})" title="Remove">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+
+        cartBody.innerHTML = html;
+        updateTotals();
+    }
+
+    // ── Update quantity of a cart item ────────────────────────
+    function updateQty(id, newQty) {
+        newQty = parseInt(newQty);
+
+        // Validate: must be at least 1
+        if (isNaN(newQty) || newQty < 1) newQty = 1;
+
+        // Validate: can't exceed stock
+        if (newQty > cart[id].stock) {
+            newQty = cart[id].stock;
+            showToast(`Max stock: ${cart[id].stock}`, 'warning');
+        }
+
+        cart[id].qty = newQty;
+        renderCart();
+    }
+
+    // ── Remove a single item from cart ────────────────────────
+    function removeItem(id) {
+        delete cart[id]; // Remove from cart object
+        renderCart();
+    }
+
+    // ── Clear all items from cart ─────────────────────────────
+    function clearCart() {
+        cart = {};
+        renderCart();
+    }
+
+    // ── Recalculate and display order total + item count ──────
+    function updateTotals() {
+        let total = 0;
+        let count = 0;
+
+        Object.values(cart).forEach(item => {
+            total += item.price * item.qty;
+            count += item.qty;
+        });
+
+        document.getElementById('orderTotal').textContent = '$' + total.toFixed(2);
+        document.getElementById('itemCount').textContent  = count;
+    }
+
+    // ── Send checkout to server ────────────────────────────────
+    function processCheckout() {
+        const items = Object.values(cart);
+        if (items.length === 0) return;
+
+        // Build the data to send to the server
+        const cartPayload = items.map(item => ({
+            productId: item.id,
+            itemName:  item.name,
+            price:     item.price,
+            quantity:  item.qty
+        }));
+
+        // Disable the checkout button while processing
+        const btn = document.getElementById('checkoutBtn');
+        btn.disabled  = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>PROCESSING...';
+
+        // Send POST request to the server (OnPostCheckoutAsync)
+        fetch('/Sales/Index?handler=Checkout', {
+            method:  'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // Anti-forgery token (security requirement)
+                'RequestVerificationToken': getAntiforgeryToken()
+            },
+            body: JSON.stringify(cartPayload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled  = false;
+            btn.innerHTML = '<i class="fas fa-credit-card me-2"></i>COMPLETE ORDER';
+
+            if (data.success) {
+                // Show success receipt modal
+                showReceipt(data, cartPayload);
+            } else {
+                showToast(data.message || 'Checkout failed.', 'error');
+            }
+        })
+        .catch(err => {
+            btn.disabled  = false;
+            btn.innerHTML = '<i class="fas fa-credit-card me-2"></i>COMPLETE ORDER';
+            showToast('Network error. Please try again.', 'error');
+        });
+    }
+
+    // ── Show the success receipt overlay ──────────────────────
+    function showReceipt(data, items) {
+        document.getElementById('receiptOrderId').textContent = data.orderId;
+        document.getElementById('receiptTotal').textContent   = '$' + parseFloat(data.total).toFixed(2);
+
+        // List each item in the receipt
+        let itemsHtml = '<table style="width:100%;">';
+        items.forEach(item => {
+            const sub = (item.price * item.quantity).toFixed(2);
+            itemsHtml += `<tr>
+                <td>${item.itemName}</td>
+                <td style="text-align:center;">x${item.quantity}</td>
+                <td style="text-align:right; font-weight:700;">$${sub}</td>
+            </tr>`;
+        });
+        itemsHtml += '</table>';
+        document.getElementById('receiptItems').innerHTML = itemsHtml;
+
+        // Set invoice download link
+        if (data.invoicePath) {
+            document.getElementById('invoiceLink').href = data.invoicePath;
+        }
+
+        // Show the overlay
+        document.getElementById('receiptOverlay').classList.add('show');
+    }
+
+    // ── Start a new order (close receipt + clear cart) ────────
+    function startNewOrder() {
+        document.getElementById('receiptOverlay').classList.remove('show');
+        clearCart();
+    }
+
+    // ── Category filter tabs ──────────────────────────────────
+    document.querySelectorAll('.cat-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Update active tab style
+            document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            const category = this.dataset.category;
+
+            // Show/hide product cards based on category
+            document.querySelectorAll('.product-card').forEach(card => {
+                const matches = category === 'all' || card.dataset.category === category;
+                card.style.display = matches ? '' : 'none';
+            });
+        });
+    });
+
+    // ── Live search with AJAX ─────────────────────────────────
+    let searchTimer; // Debounce timer (so we don't search on every single keypress)
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+        clearTimeout(searchTimer);
+
+        searchTimer = setTimeout(() => {
+            const query = this.value.trim();
+
+            // Call server-side search handler
+            fetch(`/Sales/Index?handler=Search&query=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(products => {
+                    // Get all product cards
+                    const cards = document.querySelectorAll('.product-card');
+
+                    // Build a set of matching product IDs
+                    const matchIds = new Set(products.map(p => p.productId));
+
+                    cards.forEach(card => {
+                        const id = parseInt(card.dataset.id);
+                        card.style.display = matchIds.has(id) ? '' : 'none';
+                    });
+                })
+                .catch(() => {
+                    // On error, just show all cards
+                    document.querySelectorAll('.product-card').forEach(c => c.style.display = '');
+                });
+        }, 300); // Wait 300ms after user stops typing
+    });
+
+    // ── Helper: get antiforgery token from cookie ─────────────
+    function getAntiforgeryToken() {
+        // The token is stored in a hidden form field or meta tag
+        const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return tokenInput ? tokenInput.value : '';
+    }
+
+    // ── Toast notification (non-blocking message popup) ───────
+    function showToast(message, type = 'info') {
+        // Create a toast div
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; bottom: 20px; right: 20px;
+            background: ${type === 'error' ? '#EF4444' : type === 'warning' ? '#F59E0B' : '#10B981'};
+            color: white; padding: 12px 20px; border-radius: 12px;
+            font-family: 'Nunito', sans-serif; font-weight: 700;
+            font-size: 0.88rem; z-index: 9999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Antiforgery token hidden field (required for POST requests)
+    document.body.insertAdjacentHTML('beforeend',
+        '<form id="antiforgeryForm" style="display:none;">' +
+        document.cookie + // Will be overridden by the actual form below
+        '</form>'
+    );
+    </script>
+
+    @* Hidden antiforgery token form — required for secure POST requests *@
+    <form id="__antiforgeryForm" style="display:none;">
+        @Html.AntiForgeryToken()
+    </form>
+
+    <script>
+    // Override the getAntiforgeryToken to read from the hidden form
+    function getAntiforgeryToken() {
+        return document.querySelector('#__antiforgeryForm input[name="__RequestVerificationToken"]').value;
+    }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+﻿// ============================================================
+// FILE: Models/User.cs
+// This represents the "Users" table in your SQL database.
+// EF Core will scaffold this automatically after running:
+//   Scaffold-DbContext "YourConnectionString" Microsoft.EntityFrameworkCore.SqlServer
+// ============================================================
+
+namespace BurgerShopPOS.Models
+{
+    public class User
+    {
+        public int UserId { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string PasswordHash { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+
+        // Role: 0 = Cashier, 1 = Admin, 2 = SuperAdmin
+        public int Role { get; set; }
+
+        public DateTime DateCreated { get; set; }
+
+        // Navigation property: one user can have many orders
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
+    }
+}
